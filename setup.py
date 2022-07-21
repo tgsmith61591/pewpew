@@ -24,10 +24,8 @@ def do_setup():
         name="pewpew",
         version=pewpew_version,
         description="Cool pythonic utilities for safer, more efficient development",
-        author="Taylor G Smith",
-        author_email=[
-            "taylor.smith@alkaline-ml.com",
-        ],
+        maintainer="Taylor G Smith",
+        maintainer_email="taylor.smith@alkaline-ml.com",
         license="MIT",
         packages=find_packages(),
         include_package_data=True,
