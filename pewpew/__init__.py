@@ -3,14 +3,20 @@ from pathlib import Path
 try:
     version_path = Path(__file__).parent / "VERSION"
     version = version_path.read_text().strip()
+    del version_path
 except FileNotFoundError:
     version = "0.0.0"
 
 __version__ = version
 del version
+del Path
 
-from .profiling import *
-from .utils import *
+# submods to include in *
+from . import profiling
+from . import utils
+
+# top level everything
+from .api import *
 
 __all__ = [
     # submods

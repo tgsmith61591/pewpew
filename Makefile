@@ -18,6 +18,8 @@ clean:
 	rm -f $(REPO)/VERSION
 	rm -rf .coverage
 	rm -rf .coverage.*
+	find $(REPO) -name ".DS_Store" -exec rm {} \;
+	find $(REPO) -name "*.pyc" -exec rm {} \;
 
 .PHONY: requirements
 requirements:
