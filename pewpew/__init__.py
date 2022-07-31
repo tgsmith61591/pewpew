@@ -9,9 +9,11 @@ except FileNotFoundError:
 __version__ = version
 del version
 
-from .context_managers import *
+from .profiling import *
+from .utils import *
 
 __all__ = [
     # submods
-    "context_managers",
+    "profiling",
+    "utils",
 ]
