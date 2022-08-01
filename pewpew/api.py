@@ -4,7 +4,8 @@
 Hoist top level imports
 """
 
-from .profiling import draw_spans  # noqa
-from .profiling import Profiler  # noqa
+from .beam import draw_beams  # noqa
+from .beam import Beam  # noqa
 
 __all__ = [s for s in dir()]
+œ

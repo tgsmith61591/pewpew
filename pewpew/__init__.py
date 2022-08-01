@@ -12,7 +12,7 @@ del version
 del Path
 
 # submods to include in *
-from . import profiling
+from . import beam
 from . import utils
 
 # top level everything
@@ -20,6 +20,6 @@ from .api import *
 
 __all__ = [
     # submods
-    "profiling",
+    "beam",
     "utils",
 ]

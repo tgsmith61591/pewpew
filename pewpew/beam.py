@@ -11,12 +11,12 @@ from pewpew import _plotting as plt_utils
 from pewpew.utils import iterables as iter_utils
 
 __all__ = [
-    "Profiler",
-    "draw_spans",
+    "Beam",
+    "draw_beams",
 ]
 
 
-class Profiler:
+class Beam:
     """A context manager for performance timings.
 
     A context manager that can be used to time a block's performance.
@@ -31,7 +31,7 @@ class Profiler:
     Examples
     --------
     >>> import pewpew as pw
-    >>> span = pw.Profiler("big_loop")
+    >>> span = pw.Beam("big_loop")
     >>>
     >>> with span:
     ...     for i in range(1000000):
@@ -97,8 +97,8 @@ class Profiler:
         return tuple(map(lambda ab: ab[1] - ab[0], zip(starts, stops)))
 
 
-def draw_spans(spans, color_map="plasma", dims=(17.0, None), title=None, backend=None):
-    """Plot a number of `Profiler` spans on a timeline
+def draw_beams(spans, color_map="plasma", dims=(17.0, None), title=None, backend=None):
+    """Plot a number of `Beam` spans on a timeline
 
     Parameters
     ----------
