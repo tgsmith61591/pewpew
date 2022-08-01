@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
 
 """
-Cool context managers for timing things
+`Beam` class and associated utilities
 """
 
-import copy
 import time
+import uuid
 
 from pewpew import _plotting as plt_utils
 from pewpew.utils import iterables as iter_utils
@@ -49,14 +49,18 @@ class Beam:
     Parameters
     ----------
     name : str
-        The name of the span. It is a good practice for this to be
-        a unique name, as when used in a `SpanGroup` the name is
-        treated as an identifier.
+        The name of the span. A `Beam`'s name does not need to be unique,
+        as each `Beam` contains a unique identifier. The name of a `Beam`
+        should describe the logical block it spans. For instance, a beam
+        tracing an expensive I/O operation should describe the operation
+        concisely. However, a `Beam` created in a loop over an operation
+        does not need to be named with a trailing `i` value, for instance.
     """
 
     def __init__(self, name):
         self.name = name
         self.clear()
+        self._id = str(uuid.uuid4())
 
     def clear(self):
         """Completely clear the history of the span, resetting to its zero state"""
@@ -80,30 +84,50 @@ class Beam:
         self._end_times.append(stop)
         self._reset_counter()
 
-    @property
-    def timings(self):
-        """Get a span's timing history"""
+    def _first_start_time(self):
+        """Get the min value of the start array"""
+        return min(self._start_times)
+
+    def _last_end_time(self):
+        """Get the max value of the end array"""
+        return max(self._end_times)
+
+    def _zipped(self):
+        """Zip start/end times + concurrency check"""
         starts = self._start_times
         stops = self._end_times
 
-        # only time we can have an issue here is if someone tries
-        # to access this from within the context manager block
+        # detect whether someone tries to access this from within
+        # the context manager block
         if len(starts) != len(stops):
             raise RuntimeError(
                 f"Concurrent access to {self.__class__.__name__} from within "
                 "context manager block"
             )
+        return zip(starts, stops)
 
-        return tuple(map(lambda ab: ab[1] - ab[0], zip(starts, stops)))
+    @property
+    def timings(self):
+        """Get a span's timing history"""
+        starts_stops = self._zipped()
+        return tuple(map(lambda ab: ab[1] - ab[0], starts_stops))
 
 
-def draw_beams(spans, color_map="plasma", dims=(17.0, None), title=None, backend=None):
-    """Plot a number of `Beam` spans on a timeline
+def draw_beams(
+    traces,
+    color_map="plasma",
+    dims=(17.0, None),
+    alpha=0.66,
+    title=None,
+    backend=None,
+    annotate=False,
+):
+    """Plot a number of `Beam` traces on a timeline
 
     Parameters
     ----------
-    spans : list or tuple
-        An iterable of `Span` objects.
+    traces : list or tuple
+        An iterable of `Beam` traces.
 
     color_map : str, optional
         The matplotlib cmap.
@@ -111,13 +135,40 @@ def draw_beams(spans, color_map="plasma", dims=(17.0, None), title=None, backend
     dims : tuple
         A tuple of dimensions.
 
+    alpha : float, optional
+        The opacity of the displayed bars. Lower `alpha` means
+        more transparent.
+
     title : str, optional
         The optional title of the timeline.
 
     backend : str, optional
         The matplotlib backend to default to.
+
+    annotate : bool, optional
+        Whether to annotate the plot. Defaults to False.
+
+    Examples
+    --------
+    >>> import pewpew
+    >>> import time
+    >>> import matplotlib.pyplot as plt
+    >>>
+    >>> outer = pewpew.Beam("outer")
+    >>> traces = [outer]
+    >>> with outer:
+    ...     for _ in range(5):
+    ...         inner = pewpew.Beam("inner")
+    ...         with inner:
+    ...             time.sleep(3)
+    ...         traces.append(inner)
+    >>> time.sleep(0.5)  # simulate some other process
+    >>> with outer:
+    ...     time.sleep(2)
+    >>> pewpew.draw_beams(traces, title="example 1", annotate=True)
+    >>> plt.show()
     """
-    iter_utils.assert_sized_iterable(spans, arg_name="spans", gt_size=0)
+    iter_utils.assert_sized_iterable(traces, arg_name="traces", gt_size=0)
     iter_utils.assert_sized_iterable(dims, arg_name="dims", eq_size=2)
 
     # some os are particular about the backend
@@ -126,8 +177,9 @@ def draw_beams(spans, color_map="plasma", dims=(17.0, None), title=None, backend
     import matplotlib as mpl
     import matplotlib.pyplot as plt
 
+    n_traces = len(traces)
     cmap = mpl.cm.get_cmap(color_map)
-    fig, axes = plt.subplots(len(spans), sharex=True, gridspec_kw={"hspace": 0})
+    fig, axes = plt.subplots(n_traces, sharex=True, gridspec_kw={"hspace": 0})
 
     # set overall title, optionally
     if title:
@@ -135,13 +187,48 @@ def draw_beams(spans, color_map="plasma", dims=(17.0, None), title=None, backend
 
     # set dims
     if dims[1] is None:
-        dims = list(dims[:1]) + [len(spans)]
+        dims = list(dims[:1]) + [n_traces]
     fig.set_size_inches(*dims)
 
-    # find min, max start/end points in the spans to set relative to zero
-    mn_start = min([min(sp._start_times) for sp in spans])
+    # Order traces by when their logical blocks were first entered (min start)
+    traces = sorted(traces, key=lambda s: s._first_start_time())
 
-    plt.xlim(-0.01, mx)
+    # Get min start time to scale all times relative to zero
+    min_start = traces[0]._first_start_time()
+    max_stop = traces[-1]._last_end_time()
+    plt.xlim(-0.01, max_stop - min_start)
 
-    for i, span in enumerate(spans):
-        pass
+    for i, trace in enumerate(traces):
+        ax = axes[i]
+        ax.set_ylabel(trace.name)
+        ax.set_ylim(0, 1)
+        ax.set_yticks([])
+        ax.set_xlabel("time (s)")
+        ax.set_xticklabels([])
+        ax.grid(which="both", axis="x", color="k", linestyle=":")
+
+        # Get scaled timings for current trace
+        series = [
+            (start - min_start, stop - min_start) for (start, stop) in trace._zipped()
+        ]
+
+        if annotate:
+            for j, (start, stop) in enumerate(series):
+                elapsed = stop - start
+                annotation = "\n".join(
+                    [
+                        f"iter: {j}",
+                        f"elapsed: {elapsed:,.3f}",
+                    ]
+                )
+                ax.text(
+                    start + 0.001 + (0.001 * (j % 2)),
+                    0.55 - (0.1 * (j % 2)),
+                    annotation,
+                    horizontalalignment="left",
+                    verticalalignment="center",
+                )
+
+        ax.broken_barh(
+            series, (0, 1), color=cmap(i / n_traces), linewidth=1, alpha=alpha
+        )

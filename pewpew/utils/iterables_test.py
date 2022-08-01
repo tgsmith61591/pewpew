@@ -8,9 +8,15 @@ from pewpew.utils import iterables as iter_utils
     "x,arg_name,lt_size,eq_size,gt_size,exp_err,exp_err_msg",
     [
         pytest.param("not an iterable", "x", None, None, None, TypeError, "type="),
-        pytest.param([1, 2, 3], None, 2, None, None, ValueError, "arg to have fewer than 2"),
-        pytest.param([1, 2, 3], None, None, 4, None, ValueError, "arg to have exactly 4"),
-        pytest.param([1, 2, 3], "x", None, None, 3, ValueError, "x to have greater than 3"),
+        pytest.param(
+            [1, 2, 3], None, 2, None, None, ValueError, "arg to have fewer than 2"
+        ),
+        pytest.param(
+            [1, 2, 3], None, None, 4, None, ValueError, "arg to have exactly 4"
+        ),
+        pytest.param(
+            [1, 2, 3], "x", None, None, 3, ValueError, "x to have greater than 3"
+        ),
         pytest.param([1, 2, 3], None, None, None, None, None, None),
         pytest.param([1, 2, 3], None, 5, 3, 2, None, None),
     ],
