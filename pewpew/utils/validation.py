@@ -5,8 +5,15 @@ Validation and type safety
 """
 
 __all__ = [
+    "assert_callable",
     "coalesce",
 ]
+
+
+def assert_callable(func):
+    """Assert an object is a callable"""
+    if not callable(func):
+        raise TypeError(f"{func} is not a callable object")
 
 
 def coalesce(x, default):

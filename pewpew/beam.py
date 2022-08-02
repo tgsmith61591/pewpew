@@ -121,8 +121,14 @@ def draw_beams(
     title=None,
     backend=None,
     annotate=False,
+    save_to=None,
+    save_fmt="png",
 ):
     """Plot a number of `Beam` traces on a timeline
+
+    Given a list or tuple of `Beam` traces, plot them on a timeline to display hot
+    spots in your code. These can suggest potential areas for parallelism, where
+    possible.
 
     Parameters
     ----------
@@ -148,8 +154,23 @@ def draw_beams(
     annotate : bool, optional
         Whether to annotate the plot. Defaults to False.
 
+    save_to : str, optional
+        A file to save to. If present, the figure will be saved to the location.
+
+    save_fmt : str, optional
+        The format of file to save. Defaults to "png"
+
+    Notes
+    -----
+    Note that this direct use of this function requires you to collect your traces (Ex. 1)
+    which is not the most ergonomic use. Recommended use is through the top-level
+    `@pewpew.blastem` decorator decorating the outer function, letting the `PewpewContext`
+    collect all traces, and then calling `pewpew.draw_traces`.
+
     Examples
     --------
+    Example 1, direct use while collecting traces:
+
     >>> import pewpew
     >>> import time
     >>> import matplotlib.pyplot as plt
@@ -165,7 +186,7 @@ def draw_beams(
     >>> time.sleep(0.5)  # simulate some other process
     >>> with outer:
     ...     time.sleep(2)
-    >>> pewpew.draw_beams(traces, title="example 1", annotate=True)
+    >>> pewpew.beam.draw_beams(traces, title="example 1", annotate=True)
     >>> plt.show()
     """
     iter_utils.assert_sized_iterable(traces, arg_name="traces", gt_size=0)
@@ -195,8 +216,9 @@ def draw_beams(
 
     # Get min start time to scale all times relative to zero
     min_start = traces[0]._first_start_time()
-    max_stop = traces[-1]._last_end_time()
-    plt.xlim(-0.01, max_stop - min_start)
+    max_stop = max(t._last_end_time() for t in traces)
+    max_stop_scaled = (max_stop - min_start) + 0.01
+    plt.xlim(-0.01, max_stop_scaled)
 
     for i, trace in enumerate(traces):
         ax = axes[i]
@@ -207,18 +229,18 @@ def draw_beams(
         ax.set_xticklabels([])
         ax.grid(which="both", axis="x", color="k", linestyle=":")
 
-        # Get scaled timings for current trace
-        series = [
-            (start - min_start, stop - min_start) for (start, stop) in trace._zipped()
-        ]
+        series = []
+        for j, (start, stop) in enumerate(trace._zipped()):
+            elapsed = stop - start
 
-        if annotate:
-            for j, (start, stop) in enumerate(series):
-                elapsed = stop - start
+            # "For each tuple (xmin, xwidth) a rectangle is drawn from xmin to xmin + xwidth"...
+            series.append((start - min_start, elapsed))
+
+            if annotate:
                 annotation = "\n".join(
                     [
                         f"iter: {j}",
-                        f"elapsed: {elapsed:,.3f}",
+                        f"time: {elapsed:,.3f} sec",
                     ]
                 )
                 ax.text(
@@ -232,3 +254,6 @@ def draw_beams(
         ax.broken_barh(
             series, (0, 1), color=cmap(i / n_traces), linewidth=1, alpha=alpha
         )
+
+    if save_to:
+        plt.savefig(save_to, format=save_fmt)
