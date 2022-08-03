@@ -1,18 +1,18 @@
 # -*- coding: utf-8 -*-
 
 """
-The `blastem` decorator
+The `trace` decorator
 """
 
-from pewpew.utils import decorators as dec_utils
+from pewpew import _decorator as dec_utils
 from pewpew.utils import validation as val_utils
 
 __all__ = [
-    "blastem",
+    "trace",
 ]
 
 
-def blastem(func=None):
+def trace(func=None, context_name="function"):
     """Decorates an outer function, auto-tracing all contained `Beams`
 
     The primary public `pewpew` utility for tracing, this decorator
@@ -26,12 +26,27 @@ def blastem(func=None):
         stack. For the scope of this function, any `Beam` objects
         created or entered will be auto-detected and traced
 
+    context_name : str, optional
+        The name of the trace context. This could be a logical grouping,
+        function or module name.
+
+    Examples
+    --------
+    >>> import pewpew
+    >>> @pewpew.trace
+    ... def simple_add(a, b):
+    ...     span = pewpew.Beam(name="add")
+    ...     with span:
+    ...         return a + b
+    >>> pewpew.draw()
+
+
     Notes
     -----
     * If internal calls to third party libraries that also depend on
-      `pewpew` invoke any `Beam` objects, the outermost `blastem`
+      `pewpew` invoke any `Beam` objects, the outermost `trace`
       decorator instance will absorb any collected traces from the
-      context object. This holds true for all nested `@blastem`-decorated
+      context object. This holds true for all nested `@trace`-decorated
       functions, internal or not.
     """
     if func is not None:
@@ -41,9 +56,12 @@ def blastem(func=None):
         try:
             name = inner_func.__name__
         except AttributeError:
-            name = "function"
+            # TODO: can we auto-discover the module?
+            name = context_name
 
-        # TODO: open a context to collect traces automagically
+        # Internally, the `Decorator` instance returned will encapsulate
+        # the callstack in a `TraceContext` object that tracks beams that
+        # are created.
         return dec_utils.make_decorator(inner_func, name=name)
 
     # Code path for `pewpew.pewpew(func=bar, ...)` use case
@@ -55,6 +73,4 @@ def blastem(func=None):
     # @pewpew.pewpew
     # def bar(...):
     #     ...
-    #
-    # use case.
     return decorated

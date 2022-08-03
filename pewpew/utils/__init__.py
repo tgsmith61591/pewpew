@@ -1,6 +1,5 @@
 # -*- coding: utf-8 -*-
 
-from .decorators import *
 from .iterables import *
 from .validation import *
 
