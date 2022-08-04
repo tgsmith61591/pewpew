@@ -7,7 +7,7 @@ import unittest
 
 
 class TestContextStoreDirect(unittest.TestCase):
-    """Tests of the `ContextStore` and `TraceContext`"""
+    """Direct tests of the `ContextStore` and `TraceContext`"""
 
     @staticmethod
     def assert_context_nodes_empty():
