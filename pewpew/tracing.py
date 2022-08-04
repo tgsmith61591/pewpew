@@ -33,12 +33,13 @@ def trace(func=None, context_name="function"):
     Examples
     --------
     >>> import pewpew
+    >>>
     >>> @pewpew.trace
-    ... def simple_add(a, b):
-    ...     span = pewpew.Beam(name="add")
-    ...     with span:
+    ... def add(a, b):
+    ...     with pewpew.Beam(name="add"):
     ...         return a + b
-    >>> pewpew.draw()
+    >>>
+    >>> pewpew.draw_traces()
 
 
     Notes

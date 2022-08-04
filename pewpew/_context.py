@@ -24,24 +24,35 @@ class _ContextStore:
     * This is a private class to organize internal state. Directly
       manipulating this instance can have unintended and undefined
       results.
+
+    Attributes
+    ----------
+    _root : TraceContext
+    _head : TraceContext
+    _trace_history : list
     """
 
     def __init__(self):
-        self._root = None
-        self._head = None  # handle to the tip of the nodes
-        self._trace_history = []
+        self._reset()
 
-    def push(self, ctx):
+    def _reset(self):
+        """Private method primarily used during testing"""
+        with _lock:
+            self._root = None
+            self._head = None  # handle to the tip of the nodes
+            self._trace_history = []
+
+    def push(self, trace_context):
         """(Potentially create) and mark a child context active"""
         with _lock:
             # no active context, outer decorator
             if self._root is None:
-                self._root = self._head = ctx
+                self._root = self._head = trace_context
             else:
                 # add child to existing parent, update head
-                ctx._parent = self._head
-                self._head._child = ctx
-                self._head = ctx
+                trace_context._parent = self._head
+                self._head._child = trace_context
+                self._head = trace_context
 
     def pop(self):
         """Pop the head of the store"""
@@ -61,13 +72,15 @@ class _ContextStore:
             # Base case: if head is now None, `head` was the root. We
             # want to retain the history of the code path / traces, so
             # we push the parent into the history.
-            self._trace_history.append(head)
+            if self._head is None:
+                self._root = None
+                self._trace_history.append(head)
 
     def track_beam(self, beam):
         """If an active context is present, track a new beam"""
         with _lock:
             if self._head is not None:
-                self._head.beams.append(beam)
+                self._head._beams.append(beam)
 
     def last_trace(self, flatten=False):
         """Get the most recent trace history"""
@@ -126,6 +139,7 @@ class TraceContext:
         most immediate context handle.
         """
         ContextStore.push(self)
+        return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         """Exit the trace context

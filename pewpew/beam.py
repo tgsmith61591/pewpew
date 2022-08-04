@@ -62,7 +62,6 @@ class Beam:
 
         # if this was created inside the context of `@pewpew.trace` we want
         # to track the Beam within the scope of that context
-        # TODO: @TayTay -- this doesn't seem to be working
         ctx.ContextStore.track_beam(self)
 
     def clear(self):
@@ -80,6 +79,7 @@ class Beam:
         self._reset_counter()
         self._start = time.perf_counter()
         self._start_times.append(self._start)
+        return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         """Exit the context manager"""

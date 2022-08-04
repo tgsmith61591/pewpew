@@ -6,6 +6,6 @@ Hoist top level imports
 
 from .beam import Beam  # noqa
 from .tracing import trace  # noqa
-from ._plotting import draw  # noqa
+from ._plotting import draw_traces  # noqa
 
 __all__ = [s for s in dir()]

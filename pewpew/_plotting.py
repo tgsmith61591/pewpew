@@ -36,7 +36,7 @@ def init_matplotlib(backend=None, debug=False):
         sys.stderr.write(f"Using '{existing_backend}' MPL backend\n")
 
 
-def draw(
+def draw_traces(
     color_map="plasma",
     dims=(17.0, None),
     alpha=0.66,
@@ -47,6 +47,8 @@ def draw(
     save_fmt="png",
 ):
     """Draw the most recent `@pewpew.trace`d function
+
+    TODO: consider keying by name / fn
 
     Parameters
     ----------
@@ -92,7 +94,7 @@ def draw(
     )
 
 
-def draw_beams(
+def _draw_beams(
     traces,
     color_map="plasma",
     dims=(17.0, None),
