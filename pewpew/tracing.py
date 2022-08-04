@@ -32,15 +32,19 @@ def trace(func=None, context_name="function"):
 
     Examples
     --------
+    Tracing a single function:
+
     >>> import pewpew
+    >>> import matplotlib.pyplot as plt
     >>>
     >>> @pewpew.trace
     ... def add(a, b):
     ...     with pewpew.Beam(name="add"):
     ...         return a + b
     >>>
+    >>> add(1, 2)
     >>> pewpew.draw_traces()
-
+    >>> plt.show()
 
     Notes
     -----

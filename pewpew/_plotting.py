@@ -81,7 +81,7 @@ def draw_traces(
     if beams is None:
         raise RuntimeError("No trace history!")
 
-    return draw_beams(
+    return _draw_beams(
         beams,
         color_map=color_map,
         dims=dims,
@@ -154,6 +154,10 @@ def _draw_beams(
     n_traces = len(traces)
     cmap = mpl.cm.get_cmap(color_map)
     fig, axes = plt.subplots(n_traces, sharex=True, gridspec_kw={"hspace": 0})
+
+    # if only one trace, make it indexable
+    if not hasattr(axes, "__iter__"):
+        axes = [axes]
 
     # set overall title, optionally
     if title:

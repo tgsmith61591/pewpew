@@ -4,13 +4,20 @@
 The global context. Collects all `Beam` traces while active
 """
 
+import collections
 import copy
+import os
 import threading
 
+__all__ = [
+    "clear_trace_history",
+]
 
 # Used to serialize access to shared context data structures in `pewpew`.
 # TODO: @TayTay -- consider whether should be a `Lock` instead
 _lock = threading.RLock()
+_int_safe = lambda _x: int(_x) if _x is not None else None
+_get_hist_len = lambda: _int_safe(os.environ.get("PEWPEW_TRACE_HISTORY_SIZE", None))
 
 
 class _ContextStore:
@@ -18,6 +25,25 @@ class _ContextStore:
 
     This class allows multiple nested `pewpew.trace` calls to stack
     and for the `Beam`s created within those contexts to be tracked.
+    The context store is implemented as a linked list, maintaining a
+    pointer to the root, as well as the head (the active context).
+    When all contexts have been exited, and there is no active context,
+    the root is placed into an internal list to trace trace history
+    chronologically.
+
+    This is a class that relies heavily on internal state, and generally
+    should NOT be accessed outside of this module. For public access,
+    decorate your function with `@pewpew.trace`. Directly manipulating
+    this instance can have unintended and undefined results.
+
+    Parameters
+    ----------
+    history_size : int or None, optional
+        The size of the trace history deque. This is controlled by the
+        `PEWPEW_TRACE_HISTORY_SIZE` environment variable. If not defined,
+        the deque will be allowed to grow to an arbitrary length. If set,
+        once reached and exceeded, a corresponding number of elements from
+        the front of the deque (old traces) will be dropped.
 
     Notes
     -----
@@ -32,15 +58,16 @@ class _ContextStore:
     _trace_history : list
     """
 
-    def __init__(self):
-        self._reset()
+    def __init__(self, history_size=None):
+        self._reset(history_size)
+        self._maxlen = history_size
 
-    def _reset(self):
+    def _reset(self, history_size):
         """Private method primarily used during testing"""
         with _lock:
-            self._root = None
+            self._root = None  # handle to parent trace history node
             self._head = None  # handle to the tip of the nodes
-            self._trace_history = []
+            self._trace_history = collections.deque(maxlen=history_size)
 
     def push(self, trace_context):
         """(Potentially create) and mark a child context active"""
@@ -50,8 +77,7 @@ class _ContextStore:
                 self._root = self._head = trace_context
             else:
                 # add child to existing parent, update head
-                trace_context._parent = self._head
-                self._head._child = trace_context
+                self._head.link_child(trace_context)
                 self._head = trace_context
 
     def pop(self):
@@ -101,8 +127,22 @@ class _ContextStore:
             return None
 
 
+def clear_trace_history():
+    """Clear all trace history from the `ContextStore`
+
+    A public method that alters the global state of `pewpew`'s `ContextStore`.
+    This function will blow away the trace history, which can be useful in
+    preventing any very large trace history from growing the program's memory
+    footprint.
+    """
+    with _lock:
+        # drop existing state, create new
+        global ContextStore
+        ContextStore = _ContextStore(_get_hist_len())
+
+
 # Singleton instance
-ContextStore = _ContextStore()
+ContextStore = _ContextStore(_get_hist_len())
 
 
 class TraceContext:
@@ -114,6 +154,11 @@ class TraceContext:
     is the first trace context entered, it is set as the root of what ultimately
     can be thought of as a doubly linked list of parent/child `TraceContext`
     nodes.
+
+    This is a class that relies heavily on internal state, and generally
+    should NOT be accessed outside of this module. For public access,
+    decorate your function with `@pewpew.trace`. Directly manipulating
+    this instance can have unintended and undefined results.
 
     Parameters
     ----------
@@ -149,9 +194,20 @@ class TraceContext:
         """
         ContextStore.pop()
 
+    def link_child(self, child):
+        """Assign the child, double linking this as the parent"""
+        self._child = child
+        self._child._parent = self
+
+    def track_beam(self, beam):
+        """Track a beam assigned in this context"""
+        self._beams.append(beam)
+
     @property
     def beams(self):
         """Return copies of the context's beams pre-pended with the context name"""
+
+        # TODO: consider greater fine grain control over this
 
         def _copy_beam(beam):
             beam = copy.deepcopy(beam)

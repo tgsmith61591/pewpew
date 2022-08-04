@@ -19,7 +19,7 @@ class TestContextStoreDirect(unittest.TestCase):
         assert not ctx.ContextStore._trace_history
 
     def test_beam_no_trace(self):
-        ctx.ContextStore._reset()
+        ctx.clear_trace_history()
         self.assert_context_empty()
 
         with pewpew.Beam("test_beam"):
@@ -28,7 +28,7 @@ class TestContextStoreDirect(unittest.TestCase):
         self.assert_context_empty()
 
     def test_single_trace_context(self):
-        ctx.ContextStore._reset()
+        ctx.clear_trace_history()
         self.assert_context_empty()
 
         with ctx.TraceContext(name="test_context") as trace:
@@ -44,7 +44,7 @@ class TestContextStoreDirect(unittest.TestCase):
         self.assert_context_nodes_empty()
 
     def test_multi_trace_context(self):
-        ctx.ContextStore._reset()
+        ctx.clear_trace_history()
         self.assert_context_empty()
 
         with ctx.TraceContext(name="outer_context") as trace1:
