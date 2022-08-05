@@ -34,3 +34,16 @@ def test_assert_sized_iterable(
         iter_utils.assert_sized_iterable(
             x, arg_name=arg_name, lt_size=lt_size, gt_size=gt_size, eq_size=eq_size
         )
+
+
+@pytest.mark.parametrize(
+    "it,fn,exp",
+    [
+        pytest.param([], lambda e: e % 2 == 0, None),
+        pytest.param([1, 3, 5], lambda e: e % 2 == 0, None),
+        pytest.param([2, 4, 6], lambda e: e % 2 == 0, 2),
+    ]
+)
+def test_find_first(it, fn, exp):
+    got = iter_utils.find_first(it, fn)
+    assert exp == got, got

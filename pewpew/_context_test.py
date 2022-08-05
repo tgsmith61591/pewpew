@@ -71,5 +71,5 @@ class TestContextStoreDirect(unittest.TestCase):
         self.assert_context_nodes_empty()
 
         # flattening all beams in last trace history should be 3
-        beams = ctx.ContextStore.last_trace(flatten=True)
+        beams = ctx.ContextStore.get_trace()
         assert len(beams) == 3

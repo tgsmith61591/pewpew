@@ -36,22 +36,31 @@ def init_matplotlib(backend=None, debug=False):
         sys.stderr.write(f"Using '{existing_backend}' MPL backend\n")
 
 
-def draw_traces(
+def draw_trace(
+    name=None,
+    idx=None,
     color_map="plasma",
     dims=(17.0, None),
     alpha=0.66,
+    padding=0.001,
     title=None,
     backend=None,
     annotate=False,
     save_to=None,
     save_fmt="png",
 ):
-    """Draw the most recent `@pewpew.trace`d function
+    """Draw a `@pewpew.trace`d function
 
-    TODO: consider keying by name / fn
+    If `name` or `idx` is not provided, will draw the most recent trace.
 
     Parameters
     ----------
+    name : str, optional
+        The name of the trace to draw
+
+    idx : int, optional
+        The index of the trace to draw
+
     color_map : str, optional
         The matplotlib cmap.
 
@@ -61,6 +70,9 @@ def draw_traces(
     alpha : float, optional
         The opacity of the displayed bars. Lower `alpha` means
         more transparent.
+
+    padding : float, optional
+        The padding for annotations.
 
     title : str, optional
         The optional title of the timeline.
@@ -77,8 +89,8 @@ def draw_traces(
     save_fmt : str, optional
         The format of file to save. Defaults to "png"
     """
-    beams = ctx.ContextStore.last_trace(flatten=True)
-    if beams is None:
+    beams = ctx.ContextStore.get_trace(name=name, idx=idx)
+    if not beams:
         raise RuntimeError("No trace history!")
 
     return _draw_beams(
@@ -99,6 +111,7 @@ def _draw_beams(
     color_map="plasma",
     dims=(17.0, None),
     alpha=0.66,
+    padding=0.001,
     title=None,
     backend=None,
     annotate=False,
@@ -117,7 +130,7 @@ def _draw_beams(
       traces (Ex. 1) which is not the most ergonomic or recommended use.
       Recommended use is through the top-level `@pewpew.trace` decorator
       decorating the outer function, letting the `TraceContext` collect all
-      traces, and then calling `pewpew.draw_traces`.
+      traces, and then calling `pewpew.draw_trace`.
 
     Examples
     --------
@@ -191,7 +204,8 @@ def _draw_beams(
             elapsed = stop - start
 
             # "For each tuple (xmin, xwidth) a rectangle is drawn from xmin to xmin + xwidth"...
-            series.append((start - min_start, elapsed))
+            start_scaled = start - min_start
+            series.append((start_scaled, elapsed))
 
             if annotate:
                 annotation = "\n".join(
@@ -201,7 +215,7 @@ def _draw_beams(
                     ]
                 )
                 ax.text(
-                    start + 0.001 + (0.001 * (j % 2)),
+                    start_scaled + padding + (padding * (j % 2)),
                     0.55 - (0.1 * (j % 2)),
                     annotation,
                     horizontalalignment="left",

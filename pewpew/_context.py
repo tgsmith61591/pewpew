@@ -9,6 +9,8 @@ import copy
 import os
 import threading
 
+from pewpew.utils import iterables as iter_utils
+
 __all__ = [
     "clear_trace_history",
 ]
@@ -108,23 +110,35 @@ class _ContextStore:
             if self._head is not None:
                 self._head._beams.append(beam)
 
-    def last_trace(self, flatten=False):
-        """Get the most recent trace history"""
+    def get_trace(self, name=None, idx=None):
+        """Find a trace by name or index
+
+        If no args are supplied, returns the most recent trace. If
+        a `name` is provided that matches multiple traces, the most
+        recent will be returned.
+        """
+        if name is None and idx is None:
+            idx = -1
+
+        beams = []
         with _lock:
             if self._trace_history:
-                last = self._trace_history[-1]
-                if not flatten:
-                    return last
+                if idx is not None:
+                    trace = self._trace_history[idx]
+                else:
+                    trace = iter_utils.find_first(
+                        self._trace_history[::-1],  # reverse order, recent first
+                        lambda t: t.name == name
+                    )
 
                 # else flatten the linked list into beams
-                beams = []
-                while last is not None:
-                    beams.extend(last.beams)
-                    last = last._child
+                while trace is not None:
+                    beams.extend(trace.beams)
+                    trace = trace._child
 
                 return beams
 
-            return None
+            return beams
 
 
 def clear_trace_history():
@@ -208,13 +222,13 @@ class TraceContext:
         """Return copies of the context's beams pre-pended with the context name"""
 
         # TODO: consider greater fine grain control over this
+        # def _copy_beam(beam):
+        #     beam = copy.deepcopy(beam)
+        #     beam.name = f"{self.name}.{beam.name}"
+        #     return beam
+        # return [_copy_beam(b) for b in self._beams]
 
-        def _copy_beam(beam):
-            beam = copy.deepcopy(beam)
-            beam.name = f"{self.name}.{beam.name}"
-            return beam
-
-        return [_copy_beam(b) for b in self._beams]
+        return copy.deepcopy(self._beams)
 
     @property
     def name(self):

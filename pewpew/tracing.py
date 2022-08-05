@@ -32,19 +32,37 @@ def trace(func=None, context_name="function"):
 
     Examples
     --------
-    Tracing a single function:
-
+    Ex. 1, an expensive serial function:
     >>> import pewpew
     >>> import matplotlib.pyplot as plt
+    >>> import random
+    >>> import time
     >>>
     >>> @pewpew.trace
-    ... def add(a, b):
-    ...     with pewpew.Beam(name="add"):
-    ...         return a + b
+    ... def expensive_serial_function():
+    ...     # It's a good idea to declare Beams for anything
+    ...     # that's re-used rather than use anonymous ones
+    ...     exp_span = pewpew.Beam(name="expensive")
+    ...     cheap_span = pewpew.Beam(name="cheap")
+    ...
+    ...     for _ in range(3):
+    ...         with exp_span:
+    ...             expensive_thing()
+    ...         with cheap_span:
+    ...             cheap_thing()
     >>>
-    >>> add(1, 2)
-    >>> pewpew.draw_traces()
+    >>> def expensive_thing():
+    ...     time.sleep(3)
+    >>>
+    >>> def cheap_thing():
+    ...     time.sleep(random.uniform(0., 0.25))
+    >>>
+    >>> expensive_serial_function()
+    >>> pewpew.draw_trace(annotate=True)
     >>> plt.show()
+
+    Ex. 2, the same function rethought with futures:
+    TODO: @TayTay -- create an example of parallel
 
     Notes
     -----

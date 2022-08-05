@@ -8,6 +8,7 @@ from pewpew.utils import validation as val_utils
 
 __all__ = [
     "assert_sized_iterable",
+    "find_first",
 ]
 
 
@@ -59,3 +60,29 @@ def assert_sized_iterable(
         raise ValueError(
             f"Expected {arg_name} to have greater than {gt_size} items, but found {n_elem}"
         )
+
+
+def find_first(it, true_fn):
+    """Find and return first element where `true_fn` is True
+
+    Finds the first element in `it` for which `true_fn` is True, returning
+    the value. Note subsequent elements for which `true_fn` evaluates True
+    will not be returned. Elements are evaluated left to right.
+
+    Parameters
+    ----------
+    it : iterable
+        The iterable to evaluate
+
+    true_fn : func
+        A function that accepts an element of `it` and evaluates to a
+        truthy value.
+
+    Notes
+    -----
+    * If you pass a generator for `it`, it will be exhausted
+    """
+    for e in it:
+        if true_fn(e):
+            return e
+    return None
