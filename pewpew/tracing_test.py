@@ -53,5 +53,5 @@ def test_can_save_fig(fn):
     _ = fn(1, 2)
 
     with tempfile.TemporaryDirectory() as tmp:
-        pewpew.draw_trace(save_to=f"{tmp}/fig.png")
+        pewpew.draw_trace(save_to=f"{tmp}/fig.png", annotate=True)
         assert os.path.exists(f"{tmp}/fig.png")

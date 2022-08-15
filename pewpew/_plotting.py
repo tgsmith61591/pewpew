@@ -39,15 +39,8 @@ def init_matplotlib(backend=None, debug=False):
 def draw_trace(
     name=None,
     idx=None,
-    color_map="plasma",
-    dims=(17.0, None),
-    alpha=0.66,
-    padding=0.001,
     title=None,
-    backend=None,
-    annotate=False,
-    save_to=None,
-    save_fmt="png",
+    **kwargs,
 ):
     """Draw a `@pewpew.trace`d function
 
@@ -61,6 +54,36 @@ def draw_trace(
     idx : int, optional
         The index of the trace to draw
 
+    title : str, optional
+        The optional title of the timeline.
+    """
+    beams = ctx.ContextStore.get_trace(name=name, idx=idx)
+    if not beams:
+        raise RuntimeError("No trace history!")
+    return _draw_beams(beams, title=title, **kwargs)
+
+
+def _draw_beams(
+    traces,
+    color_map="plasma",
+    dims=(17.0, None),
+    alpha=0.66,
+    padding=0.001,
+    title=None,
+    backend=None,
+    annotate=False,
+    save_to=None,
+    save_fmt="png",
+    annotate_fontsize="xx-small",
+):
+    """Plot a number of `Beam` traces on a timeline
+
+    Given a list or tuple of `Beam` traces, plot them on a timeline to display hot
+    spots in your code. These can suggest potential areas for parallelism, where
+    possible.
+
+    Parameters
+    ----------
     color_map : str, optional
         The matplotlib cmap.
 
@@ -83,46 +106,14 @@ def draw_trace(
     annotate : bool, optional
         Whether to annotate the plot. Defaults to False.
 
+    annotate_fontsize : str, optional
+        The font size for annotation. Defaults to "xx-small" if not given.
+
     save_to : str, optional
         A file to save to. If present, the figure will be saved to the location.
 
     save_fmt : str, optional
         The format of file to save. Defaults to "png"
-    """
-    beams = ctx.ContextStore.get_trace(name=name, idx=idx)
-    if not beams:
-        raise RuntimeError("No trace history!")
-
-    return _draw_beams(
-        beams,
-        color_map=color_map,
-        dims=dims,
-        alpha=alpha,
-        title=title,
-        backend=backend,
-        annotate=annotate,
-        save_to=save_to,
-        save_fmt=save_fmt,
-    )
-
-
-def _draw_beams(
-    traces,
-    color_map="plasma",
-    dims=(17.0, None),
-    alpha=0.66,
-    padding=0.001,
-    title=None,
-    backend=None,
-    annotate=False,
-    save_to=None,
-    save_fmt="png",
-):
-    """Plot a number of `Beam` traces on a timeline
-
-    Given a list or tuple of `Beam` traces, plot them on a timeline to display hot
-    spots in your code. These can suggest potential areas for parallelism, where
-    possible.
 
     Notes
     -----
@@ -220,6 +211,7 @@ def _draw_beams(
                     annotation,
                     horizontalalignment="left",
                     verticalalignment="center",
+                    fontsize=annotate_fontsize,
                 )
 
         ax.broken_barh(

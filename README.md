@@ -8,6 +8,11 @@ hotspots and opportunities for optimizations in your code.
 
 #### 1. Controlling package behavior with environment variables
 
+* `PEWPEW_LOG_LEVEL`
+
+  The logging level. Default is `'INFO'`. This is primarily an internally-used
+  environment variable used to control debugging messages.
+
 * `PEWPEW_TRACE_HISTORY_SIZE`
 
   The size of the trace history `pewpew` will retain. This is controlled

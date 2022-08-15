@@ -9,11 +9,14 @@ import copy
 import os
 import threading
 
+from pewpew._logging import get_logger
 from pewpew.utils import iterables as iter_utils
 
 __all__ = [
     "clear_trace_history",
 ]
+
+logger = get_logger(__name__)
 
 # Used to serialize access to shared context data structures in `pewpew`.
 # TODO: @TayTay -- consider whether should be a `Lock` instead
@@ -23,7 +26,8 @@ _get_hist_len = lambda: _int_safe(os.environ.get("PEWPEW_TRACE_HISTORY_SIZE", No
 
 
 class _ContextStore:
-    """A manager class to wrap access to the global context store
+    """A manager class that internally stores parent/child
+    relationships between contexts
 
     This class allows multiple nested `pewpew.trace` calls to stack
     and for the `Beam`s created within those contexts to be tracked.
@@ -34,9 +38,15 @@ class _ContextStore:
     chronologically.
 
     This is a class that relies heavily on internal state, and generally
-    should NOT be accessed outside of this module. For public access,
+    should not be accessed outside of this module. For public access,
     decorate your function with `@pewpew.trace`. Directly manipulating
     this instance can have unintended and undefined results.
+
+    Note that the `_ContextStore` is managed as a singleton instance,
+    which will not cross thread boundaries [1]. If your `pewpew.trace`-
+    decorated function spawns `Beam`s within parallel processes internally,
+    these will currently not be natively tracked. In these cases, it is
+    best to create a `Beam` outside of the context of any multiprocessing.
 
     Parameters
     ----------
@@ -53,6 +63,10 @@ class _ContextStore:
       manipulating this instance can have unintended and undefined
       results.
 
+    References
+    ----------
+    .. [1] : https://stackoverflow.com/a/45077772/3015734
+
     Attributes
     ----------
     _root : TraceContext
@@ -61,6 +75,9 @@ class _ContextStore:
     """
 
     def __init__(self, history_size=None):
+        logger.debug(
+            f"Creating new context store for thread: {threading.currentThread().ident}"
+        )
         self._reset(history_size)
         self._maxlen = history_size
 
@@ -72,8 +89,16 @@ class _ContextStore:
             self._trace_history = collections.deque(maxlen=history_size)
 
     def push(self, trace_context):
-        """(Potentially create) and mark a child context active"""
+        """(Potentially create) and mark a child context active
+
+        This is called when a `TraceContext` is entered. The `@pewpew.trace`
+        decorator internally creates and uses a `TraceContext`, but they
+        can also be manually created.
+        """
         with _lock:
+            logger.debug(
+                f"Pushing new `TraceContext` for thread: {threading.currentThread().ident}"
+            )
             # no active context, outer decorator
             if self._root is None:
                 self._root = self._head = trace_context
@@ -83,8 +108,16 @@ class _ContextStore:
                 self._head = trace_context
 
     def pop(self):
-        """Pop the head of the store"""
+        """Pop the head of the store
+
+        This is called when a `TraceContext` is exited. The `@pewpew.trace`
+        decorator internally creates and uses a `TraceContext`, but they
+        can also be manually created.
+        """
         with _lock:
+            logger.debug(
+                f"Popping `TraceContext` for thread: {threading.currentThread().ident}"
+            )
             # Only happens if external user is messing with this
             if self._head is None:
                 return
@@ -108,7 +141,7 @@ class _ContextStore:
         """If an active context is present, track a new beam"""
         with _lock:
             if self._head is not None:
-                self._head._beams.append(beam)
+                self._head._track_beam(beam)
 
     def get_trace(self, name=None, idx=None):
         """Find a trace by name or index
@@ -128,7 +161,7 @@ class _ContextStore:
                 else:
                     trace = iter_utils.find_first(
                         self._trace_history[::-1],  # reverse order, recent first
-                        lambda t: t.name == name
+                        lambda t: t.name == name,
                     )
 
                 # else flatten the linked list into beams
@@ -213,8 +246,9 @@ class TraceContext:
         self._child = child
         self._child._parent = self
 
-    def track_beam(self, beam):
+    def _track_beam(self, beam):
         """Track a beam assigned in this context"""
+        logger.debug(f"Tracking `Beam` for thread: {threading.currentThread().ident}")
         self._beams.append(beam)
 
     @property

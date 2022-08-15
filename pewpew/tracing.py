@@ -47,22 +47,54 @@ def trace(func=None, context_name="function"):
     ...
     ...     for _ in range(3):
     ...         with exp_span:
-    ...             expensive_thing()
+    ...             expensive_thing_that_could_be_parallel()
+    ...
+    ...     for _ in range(5):
     ...         with cheap_span:
-    ...             cheap_thing()
+    ...             cheap_serial_thing()
     >>>
-    >>> def expensive_thing():
+    >>> def expensive_thing_that_could_be_parallel():
     ...     time.sleep(3)
     >>>
-    >>> def cheap_thing():
+    >>> def cheap_serial_thing():
     ...     time.sleep(random.uniform(0., 0.25))
     >>>
     >>> expensive_serial_function()
     >>> pewpew.draw_trace(annotate=True)
     >>> plt.show()
 
-    Ex. 2, the same function rethought with futures:
-    TODO: @TayTay -- create an example of parallel
+    Ex. 2, the same function rethought with multiprocessing:
+    >>> import joblib
+    >>> import pewpew
+    >>> import matplotlib.pyplot as plt
+    >>> import random
+    >>> import time
+    >>>
+    >>> @pewpew.trace
+    ... def rethought_function(n_jobs=4):
+    ...     exp_span = pewpew.Beam(name="expensive_outer")
+    ...     with exp_span:
+    ...         joblib.Parallel(n_jobs=n_jobs)(
+    ...             joblib.delayed(expensive_thing_that_could_be_parallel)()
+    ...             for _ in range(3)
+    ...         )
+    ...
+    ...     cheap_span = pewpew.Beam(name="cheap")
+    ...     for _ in range(5):
+    ...         with cheap_span:
+    ...             cheap_serial_thing()
+    >>>
+    >>> def expensive_thing_that_could_be_parallel():
+    ...     exp_span = pewpew.Beam(name="expensive_inner")
+    ...     with exp_span:
+    ...         time.sleep(3)
+    >>>
+    >>> def cheap_serial_thing():
+    ...     time.sleep(random.uniform(0., 0.25))
+    >>>
+    >>> rethought_function()
+    >>> pewpew.draw_trace(annotate=True)
+    >>> plt.show()
 
     Notes
     -----
