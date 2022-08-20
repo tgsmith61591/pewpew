@@ -3,10 +3,13 @@
 import sys
 
 from pewpew import _context as ctx
+from pewpew._logging import get_logger
 from pewpew.utils import iterables as iter_utils
 
+logger = get_logger(__name__)
 
-def init_matplotlib(backend=None, debug=False):
+
+def init_matplotlib(backend=None):
     """Initialize the Matplotlib backend
 
     In some Mac distros, python is not installed as a framework.
@@ -17,23 +20,18 @@ def init_matplotlib(backend=None, debug=False):
     ----------
     backend : str, optional
         The backend to use by default.
-
-    debug : bool, optional
-        Whether to be loud.
     """
     import matplotlib
 
     existing_backend = matplotlib.get_backend()
     if backend is not None:
         matplotlib.use(backend)
-
-        if debug:
-            sys.stderr.write(
-                f"Currently using '{existing_backend}' matplotlib backend, "
-                f"switching to '{backend}' backend\n"
-            )
-    elif debug:
-        sys.stderr.write(f"Using '{existing_backend}' MPL backend\n")
+        logger.debug(
+            f"Currently using '{existing_backend}' matplotlib backend, "
+            f"switching to '{backend}' backend\n"
+        )
+    else:
+        logger.debug(f"Using '{existing_backend}' MPL backend\n")
 
 
 def draw_trace(
@@ -67,6 +65,7 @@ def _draw_beams(
     traces,
     color_map="plasma",
     dims=(17.0, None),
+    dpi=None,
     alpha=0.66,
     padding=0.001,
     title=None,
@@ -89,6 +88,9 @@ def _draw_beams(
 
     dims : tuple
         A tuple of dimensions.
+
+    dpi : int, optional
+        The DPI quality of the image. Default is None.
 
     alpha : float, optional
         The opacity of the displayed bars. Lower `alpha` means
@@ -157,7 +159,7 @@ def _draw_beams(
 
     n_traces = len(traces)
     cmap = mpl.cm.get_cmap(color_map)
-    fig, axes = plt.subplots(n_traces, sharex=True, gridspec_kw={"hspace": 0})
+    fig, axes = plt.subplots(n_traces, sharex=True, gridspec_kw={"hspace": 0}, dpi=dpi)
 
     # if only one trace, make it indexable
     if not hasattr(axes, "__iter__"):
@@ -169,7 +171,7 @@ def _draw_beams(
 
     # set dims
     if dims[1] is None:
-        dims = list(dims[:1]) + [n_traces]
+        dims = list(dims[:1]) + [n_traces + 0.5]
     fig.set_size_inches(*dims)
 
     # Order traces by when their logical blocks were first entered (min start)
@@ -202,12 +204,12 @@ def _draw_beams(
                 annotation = "\n".join(
                     [
                         f"iter: {j}",
-                        f"time: {elapsed:,.3f} sec",
+                        f"time: {elapsed:,.3f}",
                     ]
                 )
                 ax.text(
-                    start_scaled + padding + (padding * (j % 2)),
-                    0.55 - (0.1 * (j % 2)),
+                    start_scaled + padding,
+                    0.55 - (0.25 * (j % 2)),
                     annotation,
                     horizontalalignment="left",
                     verticalalignment="center",

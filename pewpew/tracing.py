@@ -83,6 +83,8 @@ def trace(func=None, context_name="function"):
     ...     for _ in range(5):
     ...         with cheap_span:
     ...             cheap_serial_thing()
+    ...         # simulate some post-processing
+    ...         time.sleep(0.01)
     >>>
     >>> def expensive_thing_that_could_be_parallel():
     ...     exp_span = pewpew.Beam(name="expensive_inner")
